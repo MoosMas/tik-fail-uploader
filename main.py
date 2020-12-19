@@ -34,7 +34,7 @@ while running:
       if now in data.keys():
          if user in data[now].keys():
             print("User found in now")
-            data[now].update = sessionLog
+            data[now].update(sessionLog)
          else:
             data[now].update(sessionLog)
       else:
@@ -64,28 +64,44 @@ while running:
    print(csvFiles)
 
    # for name in folders:
-   sessionLog[choice] = []
+   sessionLog[choice] = {}
    for file in csvFiles[0]:
       if file not in completedFiles:
-         sessionLog[choice].append(file)
+         sessionLog[choice][file] = {}
          # sessionLog[f"{choice}"].append(file)
          print(f"{file} not completed yet")
          path = os.path.join(rootFolder, choice)
          with open(f"{path}/{file}", "r", encoding="utf8") as f:
             reader = csv.DictReader(f)
             data = list(reader)
-            # for line in data:
-            for line in data[:5]:
+            for line in data:
+            # for line in data[:5]:
                print(line["webVideoUrl"])
                endpoint = "https://tik.fail/api/geturl"
                body = {"url": line["webVideoUrl"]}
-               r = requests.post(url = endpoint, data = body)
+               response = requests.post(url = endpoint, data = body)
+               print(f"Text: {response}")
 
-               response = r.text
-               print(r.status_code)
-               print(response)
-               if r.status_code == 200:
-                  sessionLog[-1].append(response)
+               # print(response)
+               videoId = line['id']
+               sessionLog[choice][file][videoId] = {}
+               
+               if response.status_code == 200:
+                  json_data = response.json()
+                  print(f"Data: {json_data}")
+                  # print(f"Webpage: {json_data['webpage']}")
+                  # sessionLog[choice][file].append(line['id'])
+                  sessionLog[choice][file][videoId].update({
+                     'code': response.status_code,
+                     'url': json_data["webpage"],
+                     'direct': json_data["direct"],
+                     'original': line['webVideoUrl']
+                  })
+               else:
+                  sessionLog[choice][file][videoId].update({
+                     'code': response.status_code,
+                     'original': line["webVideoUrl"]
+                  })
       else:
          print(f"{file} completed")
 
