@@ -3,14 +3,17 @@ import csv
 import requests
 from datetime import datetime
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
+rootFolder = os.getenv("folder")
 
 # outputFile = open("logs.json", "a+", encoding="utf8")
-compFilesFile = open("completed.txt", "r", encoding="utf8")
+prevCompletedFile = open("completed.txt", "r", encoding="utf8")
 completedFiles = []
-for completedFile in compFilesFile:
+for completedFile in prevCompletedFile:
    completedFiles.append(completedFile)
-
-
 
 folders = []
 csvFiles = []
@@ -28,7 +31,6 @@ while running:
    sessionLog = {}
    def write_json(data, user):
       with open('logs.json') as json_file:
-         # Fixen dat er aan het logbestand kan worden toegevoegd
          data = json.load(json_file)
 
       if now in data.keys():
@@ -41,14 +43,12 @@ while running:
          data[now] = sessionLog
       
       with open('logs.json', 'w') as json_file:
-
          json.dump(data, json_file, indent=4)
 
    def find_csv_folders( path_to_dir, suffix=".csv" ):
       folders = os.listdir(path_to_dir)
       return [ filename for filename in folders if filename.endswith( suffix ) ] or ""
 
-   rootFolder = ""
    subFolders = os.listdir(rootFolder)
 
    for i in range(len(subFolders)):
@@ -56,21 +56,21 @@ while running:
       if os.path.isdir(currFolder):
          print(f"{i}. {subFolders[i]}")
 
-   choice = input("Select a user: ")
-   choice = subFolders[int(choice)]
+   userChoice = input("Select a user: ")
+   userChoice = subFolders[int(userChoice)]
 
-   print(choice)
-   csvFiles.append(find_csv_folders(f"{rootFolder}/{choice}"))
+   print(userChoice)
+   csvFiles.append(find_csv_folders(f"{rootFolder}/{userChoice}"))
    print(csvFiles)
 
    # for name in folders:
-   sessionLog[choice] = {}
+   sessionLog[userChoice] = {}
    for file in csvFiles[0]:
       if file not in completedFiles:
-         sessionLog[choice][file] = {}
-         # sessionLog[f"{choice}"].append(file)
+         sessionLog[userChoice][file] = {}
+         # sessionLog[f"{userChoice}"].append(file)
          print(f"{file} not completed yet")
-         path = os.path.join(rootFolder, choice)
+         path = os.path.join(rootFolder, userChoice)
          with open(f"{path}/{file}", "r", encoding="utf8") as f:
             reader = csv.DictReader(f)
             data = list(reader)
@@ -84,28 +84,29 @@ while running:
 
                # print(response)
                videoId = line['id']
-               sessionLog[choice][file][videoId] = {}
+               sessionLog[userChoice][file][videoId] = {}
                
                if response.status_code == 200:
                   json_data = response.json()
                   print(f"Data: {json_data}")
                   # print(f"Webpage: {json_data['webpage']}")
-                  # sessionLog[choice][file].append(line['id'])
-                  sessionLog[choice][file][videoId].update({
+                  # sessionLog[userChoice][file].append(line['id'])
+                  sessionLog[userChoice][file][videoId].update({
                      'code': response.status_code,
                      'url': json_data["webpage"],
                      'direct': json_data["direct"],
                      'original': line['webVideoUrl']
                   })
                else:
-                  sessionLog[choice][file][videoId].update({
+                  sessionLog[userChoice][file][videoId].update({
                      'code': response.status_code,
                      'original': line["webVideoUrl"]
                   })
       else:
          print(f"{file} completed")
+         
 
-   write_json(sessionLog, choice)
+   write_json(sessionLog, userChoice)
 
    stop = input("Press enter to continue or 'X' to exit: ").lower()
    if stop == 'x':
@@ -114,4 +115,4 @@ while running:
 # json.dump(sessionLog, outputFile)
 print(len(csvFiles))
 # outputFile.close()
-compFilesFile.close()
+prevCompletedFile.close()
