@@ -7,35 +7,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-rootFolder = os.getenv("folder")
-
-# outputFile = open("logs.json", "a+", encoding="utf8")
-prevCompletedFile = open("completed.txt", "r", encoding="utf8")
-completedFiles = []
-for completedFile in prevCompletedFile:
-   completedFiles.append(completedFile)
+# Enter your TikTok-scraper folder here, for example: "C:/Users/myname/Desktop/Homework/TikTok":
+rootFolder = "" or os.getenv("folder")
 
 folders = []
 csvFiles = []
 sessionLog = {}
 
-# prevSessions = json.loads(outputFile)
 now = datetime.strftime(datetime.now(), "%d-%m-%Y")
 
-# def write_json(data, filename='logs.json'):
-#    with open(filename, 'w') as o:
-#       json.dump(data, o)
 running = True
 while running:
    csvFiles = []
    sessionLog = {}
+   os.system("cls")
    def write_json(data, user):
       with open('logs.json') as json_file:
          data = json.load(json_file)
 
       if now in data.keys():
          if user in data[now].keys():
-            print("User found in now")
             data[now].update(sessionLog)
          else:
             data[now].update(sessionLog)
@@ -54,65 +45,70 @@ while running:
    for i in range(len(subFolders)):
       currFolder = os.path.join(rootFolder, subFolders[i])
       if os.path.isdir(currFolder):
-         print(f"{i}. {subFolders[i]}")
+         print(f"{i} | {subFolders[i]}")
 
-   userChoice = input("Select a user: ")
+   userChoice = input("\nSelect a user: ")
+   while userChoice.isnumeric() == False:
+      print("Please enter a number.")
+      userChoice = input("Select a user: ")
+      
    userChoice = subFolders[int(userChoice)]
 
-   print(userChoice)
    csvFiles.append(find_csv_folders(f"{rootFolder}/{userChoice}"))
-   print(csvFiles)
-
-   # for name in folders:
+   
+   fileProgress = 0
    sessionLog[userChoice] = {}
    for file in csvFiles[0]:
-      if file not in completedFiles:
-         sessionLog[userChoice][file] = {}
-         # sessionLog[f"{userChoice}"].append(file)
-         print(f"{file} not completed yet")
-         path = os.path.join(rootFolder, userChoice)
-         with open(f"{path}/{file}", "r", encoding="utf8") as f:
-            reader = csv.DictReader(f)
-            data = list(reader)
-            for line in data:
-            # for line in data[:5]:
-               print(line["webVideoUrl"])
-               endpoint = "https://tik.fail/api/geturl"
-               body = {"url": line["webVideoUrl"]}
-               response = requests.post(url = endpoint, data = body)
-               print(f"Text: {response}")
+      lineProgress = 0
+      fileProgress += 1
+      os.system("cls")
+      completedFromCurrFile = 0
+      
+      # if file not in completedFiles:
+      sessionLog[userChoice][file] = {}
+      path = os.path.join(rootFolder, userChoice)
+      with open(f"{path}/{file}", "r", encoding="utf8") as f:
+         reader = csv.DictReader(f)
+         data = list(reader)
+         for line in data:
+            lineProgress += 1
+            print(f"File: {fileProgress}/{len(csvFiles[0])} | Completed: {lineProgress}/{len(data)}")
+            endpoint = "https://tik.fail/api/geturl"
+            body = {"url": line["webVideoUrl"]}
+            response = requests.post(url = endpoint, data = body)
+            print(f"Response: {response}")
+            videoId = line['id']
+            sessionLog[userChoice][file][videoId] = {}
 
-               # print(response)
-               videoId = line['id']
-               sessionLog[userChoice][file][videoId] = {}
-               
-               if response.status_code == 200:
-                  json_data = response.json()
-                  print(f"Data: {json_data}")
-                  # print(f"Webpage: {json_data['webpage']}")
-                  # sessionLog[userChoice][file].append(line['id'])
+            if response.status_code == 200:
+               json_data = response.json()
+
+               try:
                   sessionLog[userChoice][file][videoId].update({
-                     'code': response.status_code,
-                     'url': json_data["webpage"],
-                     'direct': json_data["direct"],
-                     'original': line['webVideoUrl']
+                  'code': response.status_code,
+                  'url': json_data["webpage"],
+                  'direct': json_data["direct"],
+                  'original': line['webVideoUrl']
                   })
-               else:
+                  completedFromCurrFile += 1
+               except TypeError:
                   sessionLog[userChoice][file][videoId].update({
-                     'code': response.status_code,
-                     'original': line["webVideoUrl"]
-                  })
-      else:
-         print(f"{file} completed")
-         
-
-   write_json(sessionLog, userChoice)
-
+                  'status': 'Failed',
+                  'response': json_data,
+                  'original': line["webVideoUrl"]
+               })
+            else:
+               print("Failed: See logs for details")
+               sessionLog[userChoice][file][videoId].update({
+                  'code': response.status_code,
+                  'response': response,
+                  'original': line["webVideoUrl"]
+               })
+            write_json(sessionLog, userChoice)
+            if completedFromCurrFile == len(data):
+               print("Done")
+      # else:
+      #    print(f"{file} completed")
    stop = input("Press enter to continue or 'X' to exit: ").lower()
    if stop == 'x':
       running = False
-
-# json.dump(sessionLog, outputFile)
-print(len(csvFiles))
-# outputFile.close()
-prevCompletedFile.close()
